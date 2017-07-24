@@ -71,7 +71,8 @@ function getNewsInfo() {
     var articles   = JSON.parse(news_obj)['articles'];
     var news_list = "<ul>";
     for (i = 0; i < articles.length; i++) {
-        news_list += "<li>" + articles[i]['title'] + "</li>";
+        news_list += "<li><a href='" + articles[i]['url'] + "'>";
+        news_list += articles[i]['title'] + "</a></li>";
     }
     return news_list + "</ul>";
 }
@@ -123,6 +124,21 @@ function getDailyRecipe(){
     return "<a href='" + recipe_url + "'>" + recipe_title + "</a>" + html_img;
 }
 
+function getWordOfDay(){
+    /*
+    Retrieves and returns the word of the day
+    */
+    var site     ="http://api.wordnik.com/v4/words.json/wordOfTheDay?api_key=";
+    var keys     = PropertiesService.getScriptProperties();
+    var word_key = keys.getProperty('word_api');
+    var word_obj = JSON.parse(UrlFetchApp.fetch(site + word_key));
+    var result   = "<b>" + word_obj['word'] + "</b><ul>";
+    for (var i = 0; i < word_obj['definitions'].length; i++) {
+        result += "<li>" + word_obj['definitions'][i]['text'] + "</li>";
+    }
+    return result + "</ul>";
+}
+
 function getDailyQuote(){
     /*
     Retrieves and returns random daily quote
@@ -143,13 +159,15 @@ function createMessageBody(){
     var news_info    = "<p>" + getNewsInfo()    + "</p>";
     var weather_info = "<p>" + getWeatherInfo() + "</p>";
     var daily_recipe = "<p>" + getDailyRecipe() + "</p>";
+    var daily_word   = "<p>" + getWordOfDay()   + "</p>";
     var daily_quote  = "<p>" + getDailyQuote()  + "</p>";
-    email += "<h2>Emails</h2>"       + email_info;
-    email += "<h2>Events</h2>"       + cal_info;
-    email += "<h2>News</h2>"         + news_info;
-    email += "<h2>Weather</h2>"      + weather_info;
-    email += "<h2>Daily Recipe</h2>" + daily_recipe;
-    email += "<h2>Daily Quote</h2>"  + daily_quote;
+    email += "<h2>Emails</h2>"          + email_info;
+    email += "<h2>Events</h2>"          + cal_info;
+    email += "<h2>News</h2>"            + news_info;
+    email += "<h2>Weather</h2>"         + weather_info;
+    email += "<h2>Daily Recipe</h2>"    + daily_recipe;
+    email += "<h2>Word of the Day</h2>" + daily_word;
+    email += "<h2>Daily Quote</h2>"     + daily_quote;
     return email;
 }
 

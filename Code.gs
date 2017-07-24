@@ -4,7 +4,7 @@ function getEmailInfo(){
     var intro = "You have " + num_unread + " unread message(s).\n";
     intro += num_starred_unread + " of these message(s) are starred.\n";
     if (num_unread == 0) {
-        return intro
+        return intro;
     }
 
     var message_list = "<ol>"
@@ -23,7 +23,7 @@ function getEmailInfo(){
              }
          }
     }
-    message_list += "</ol>"
+    message_list += "</ol>";
 
     return intro + message_list;
 }
@@ -39,8 +39,8 @@ function getCalInfo() {
     var events_list = "<ol>";
     for (var i = 0; i < events.length; i++) {
         var title    = events[i].getTitle();
-        var start    = events[i].getStartTime();
-        var end      = events[i].getEndTime();
+        var start    = events[i].getStartTime().toLocaleTimeString();
+        var end      = events[i].getEndTime().toLocaleTimeString();
         var location = events[i].getLocation();
         events_list += "<li><b>" + title + "</b>, from " + start + " to " + end;
         if (location != "") {
@@ -66,13 +66,23 @@ function getNewsInfo() {
     return news_list + "</ul>";
 }
 
+function kelvinToF(K) {
+    return 1.8 * (K - 273) + 32;
+}
+
 function getWeatherInfo() {
     var weather     = "http://api.openweathermap.org/data/2.5/weather?id=5087168&APPID=";
     var properties  = PropertiesService.getScriptProperties();
     var weather_api = properties.getProperty('weather_api');
-    var weather_obj = UrlFetchApp.fetch(weather + weather_api);
-    // TODO: format weather information in a way that's easy to understand
-    return weather_obj
+    var weather_obj = JSON.parse(UrlFetchApp.fetch(weather + weather_api));
+    var description = weather_obj['weather'][0]['description'];
+    var low         = kelvinToF(weather_obj['main']['temp_min']).toFixed(2);
+    var high        = kelvinToF(weather_obj['main']['temp_max']).toFixed(2);
+    var sunrise     = new Date(1000 * weather_obj['sys']['sunrise']).toLocaleTimeString();
+    var sunset      = new Date(1000 * weather_obj['sys']['sunset']).toLocaleTimeString();
+    var readable    = "The weather today will be " + description + " with a low of " + low + " and a high of " + high;
+    readable += ". Sunrise will be at " + sunrise + " and sunset will be at " + sunset + ".";
+    return readable;
 }
 
 function createMessageBody(){
@@ -92,4 +102,3 @@ function sendMail() {
         htmlBody: createMessageBody(),
     });
 }
-

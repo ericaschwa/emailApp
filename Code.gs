@@ -107,6 +107,22 @@ function getWeatherInfo() {
     return result;
 }
 
+function getDailyRecipe(){
+    /*
+    Retrieves and returns random daily recipe as HTML string
+    */
+    var site         = "http://food2fork.com/api/search?key=";
+    var keys         = PropertiesService.getScriptProperties();
+    var recipe_key   = keys.getProperty('recipe_api');
+    var recipe_obj   = JSON.parse(UrlFetchApp.fetch(site + recipe_key));
+    var rand_index   = Math.floor(Math.random() * recipe_obj['count']);
+    var recipe_url   = recipe_obj['recipes'][rand_index]['f2f_url'];
+    var recipe_title = recipe_obj['recipes'][rand_index]['title'];
+    var recipe_img   = recipe_obj['recipes'][rand_index]['image_url'];
+    var html_img     = "<p><img src='" + recipe_img + "' width='300'></p>"
+    return "<a href='" + recipe_url + "'>" + recipe_title + "</a>" + html_img;
+}
+
 function getDailyQuote(){
     /*
     Retrieves and returns random daily quote
@@ -126,12 +142,14 @@ function createMessageBody(){
     var cal_info     = "<p>" + getCalInfo()     + "</p>";
     var news_info    = "<p>" + getNewsInfo()    + "</p>";
     var weather_info = "<p>" + getWeatherInfo() + "</p>";
+    var daily_recipe = "<p>" + getDailyRecipe() + "</p>";
     var daily_quote  = "<p>" + getDailyQuote()  + "</p>";
-    email += "<h2>Emails</h2>"     + email_info;
-    email += "<h2>Events</h2>"      + cal_info;
-    email += "<h2>News</h2>"        + news_info;
-    email += "<h2>Weather</h2>"     + weather_info;
-    email += "<h2>Daily Quote</h2>" + daily_quote;
+    email += "<h2>Emails</h2>"       + email_info;
+    email += "<h2>Events</h2>"       + cal_info;
+    email += "<h2>News</h2>"         + news_info;
+    email += "<h2>Weather</h2>"      + weather_info;
+    email += "<h2>Daily Recipe</h2>" + daily_recipe;
+    email += "<h2>Daily Quote</h2>"  + daily_quote;
     return email;
 }
 
@@ -146,9 +164,6 @@ function sendMail() {
         to: me,
         subject: "Your Daily Email Update",
         htmlBody: createMessageBody(),
-        inlineImages:
-        {
-         daily_image: image,
-        },
+        attachments: [image],
     });
 }

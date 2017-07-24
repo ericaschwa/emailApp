@@ -107,29 +107,48 @@ function getWeatherInfo() {
     return result;
 }
 
+function getDailyQuote(){
+    /*
+    Retrieves and returns random daily quote
+    */
+    var site      = "http://quotes.rest/qod.json";
+    var quote_obj = JSON.parse(UrlFetchApp.fetch(site));
+    quote_info    = quote_obj['contents']['quotes'][0];
+    return '"' + quote_info['quote'] + '" - ' + quote_info['author'];
+}
+
 function createMessageBody(){
     /*
     Creates and returns the body of the daily email message
     */
-    var email  = "<h1>Welcome to your daily email update!</h1>\n";
-    var email_info = "<p>" + getEmailInfo() + "</p>";
-    var cal_info   = "<p>" + getCalInfo() + "</p>";
-    var news_info = "<p>" + getNewsInfo() + "</p>";
+    var email        = "<h1>Welcome to your daily email update!</h1>\n";
+    var email_info   = "<p>" + getEmailInfo()   + "</p>";
+    var cal_info     = "<p>" + getCalInfo()     + "</p>";
+    var news_info    = "<p>" + getNewsInfo()    + "</p>";
     var weather_info = "<p>" + getWeatherInfo() + "</p>";
-    email += "<h2>Emails</h2>"  + email_info;
-    email += "<h2>Events</h2>"  + cal_info;
-    email += "<h2>News</h2>"    + news_info;
-    email += "<h2>Weather</h2>" + weather_info;
+    var daily_quote  = "<p>" + getDailyQuote()  + "</p>";
+    email += "<h2>Emails</h2>"     + email_info;
+    email += "<h2>Events</h2>"      + cal_info;
+    email += "<h2>News</h2>"        + news_info;
+    email += "<h2>Weather</h2>"     + weather_info;
+    email += "<h2>Daily Quote</h2>" + daily_quote;
+    return email;
 }
 
 function sendMail() {
     /*
     Creates and sends a daily email message
     */
-    var me        = Session.getActiveUser().getEmail();
+    var me      = Session.getActiveUser().getEmail();
+    var pic_url = "https://unsplash.it/500/300/?random";
+    var image   = UrlFetchApp.fetch(pic_url).getBlob().setName("daily_image");
     MailApp.sendEmail({
         to: me,
         subject: "Your Daily Email Update",
         htmlBody: createMessageBody(),
+        inlineImages:
+        {
+         daily_image: image,
+        },
     });
 }

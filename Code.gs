@@ -1,3 +1,16 @@
+function describeEmail(msg){
+    /*
+    Given an email, returns HTML string describing it
+    */
+    var subject = msg.getSubject();
+    var from    = msg.getFrom();
+    var result = "<li><b>" + subject + "</b>, from " + from;
+    if (msg.isStarred()) {
+        result += "<ul><li>*** STARRED ***</li></ul>";
+    }
+    return result + "</li>";
+}
+
 function getEmailInfo(){
     /*
     Returns info about the user's unread emails, as an HTML string
@@ -8,9 +21,6 @@ function getEmailInfo(){
     var num_starred_unread = GmailApp.getStarredUnreadCount();
     var intro = "You have " + num_unread + " unread message(s).\n";
     intro += num_starred_unread + " of these message(s) are starred.\n";
-    if (num_unread == 0) {
-        return intro;
-    }
 
     var message_list = "<ol>"
     var threads = GmailApp.getInboxThreads(0,50)
@@ -18,58 +28,67 @@ function getEmailInfo(){
     for (var i = 0; i < msgs.length; i++) {
         for (var j = 0; j < msgs[i].length; j++) {
             if (msgs[i][j].isUnread()) {
-                 var subject = msgs[i][j].getSubject();
-                 var from        = msgs[i][j].getFrom();
-                 message_list += "<li><b>" + subject + "</b>, from " + from;
-                 if (msgs[i][j].isStarred()) {
-                     message_list += "<ul><li>*** STARRED ***</li></ul>";
-                 }
-                 message_list += "</li>";
+                 message_list += describeEmail(msgs[i][j]);
              }
          }
     }
-    message_list += "</ol>";
-    return intro + message_list;
+    return intro + message_list + "</ol>";
+}
+
+function describeEvent(evt){
+    /*
+    Given an event, returns HTML string describing it
+    */
+    var title    = evt.getTitle();
+    var start    = evt.getStartTime().toLocaleTimeString();
+    var end      = evt.getEndTime().toLocaleTimeString();
+    var location = evt.getLocation();
+    var result   = "<li><b>" + title + "</b>, from " + start + " to " + end;
+    if (location != "") {
+        result += " at " + location;
+    }
+    return result + "</li>";
 }
 
 function getCalInfo() {
     /*
     Returns info about the user's calendar events for the day, as HTML string
+    Also returns whether any places have been found, and a map showing them
     */
     var today  = new Date();
     var events = CalendarApp.getDefaultCalendar().getEventsForDay(today);
-    intro = "You have " + events.length + " event(s) scheduled for today.\n";
-    if (events.length == 0) {
-        return intro;
-    }
-
+    var intro = "You have " +events.length+ " event(s) scheduled for today.\n";
     var events_list = "<ol>";
+    var map = Maps.newStaticMap();
+    var locations_exist = false;
     for (var i = 0; i < events.length; i++) {
-        var title    = events[i].getTitle();
-        var start    = events[i].getStartTime().toLocaleTimeString();
-        var end      = events[i].getEndTime().toLocaleTimeString();
         var location = events[i].getLocation();
-        events_list += "<li><b>" +title + "</b>, from " + start + " to " + end;
-        if (location != "") {
-            events_list += " at " + location;
-        }
-        events_list += "</li>";
+        try {
+            // For now, in square created by Brunswick, ME and Pescadero, CA
+            var response = Maps.newGeocoder()
+                .setBounds(37.2367582, -122.41544570000002, 43.9140, -69.9670)
+                .geocode(location);
+            map.addMarker(response.results[0].geometry.location.lat,
+                          response.results[0].geometry.location.lng);
+            locations_exist = true;
+        } catch(err) {}
+        events_list += describeEvent(events[i]);
     }
     events_list += "</ol>";
-
-    return intro + events_list;
+    var map_image = Utilities.newBlob(map.getMapImage(), 'image/png');
+    return [intro + events_list, locations_exist, map_image];
 }
 
 function getNewsInfo() {
     /*
     Returns Google News's top stories, as an HTML string unordered list
     */
-    var site     = "https://newsapi.org/v1/articles?source=google-news";
-    var keys     = PropertiesService.getScriptProperties();
-    var news_key = keys.getProperty('news_api');
-    var news_obj = UrlFetchApp.fetch(site + "&apiKey=" + news_key);
+    var site       = "https://newsapi.org/v1/articles?source=google-news";
+    var keys       = PropertiesService.getScriptProperties();
+    var news_key   = keys.getProperty('news_api');
+    var news_obj   = UrlFetchApp.fetch(site + "&apiKey=" + news_key);
     var articles   = JSON.parse(news_obj)['articles'];
-    var news_list = "<ul>";
+    var news_list  = "<ul>";
     for (i = 0; i < articles.length; i++) {
         news_list += "<li><a href='" + articles[i]['url'] + "'>";
         news_list += articles[i]['title'] + "</a></li>";
@@ -153,35 +172,42 @@ function createMessageBody(){
     /*
     Creates and returns the body of the daily email message
     */
+    var cal_info     = getCalInfo();
     var email        = "<h1>Welcome to your daily email update!</h1>\n";
     var email_info   = "<p>" + getEmailInfo()   + "</p>";
-    var cal_info     = "<p>" + getCalInfo()     + "</p>";
+    var cal_string   = "<p>" + cal_info[0]      + "</p>";
     var news_info    = "<p>" + getNewsInfo()    + "</p>";
     var weather_info = "<p>" + getWeatherInfo() + "</p>";
     var daily_recipe = "<p>" + getDailyRecipe() + "</p>";
     var daily_word   = "<p>" + getWordOfDay()   + "</p>";
     var daily_quote  = "<p>" + getDailyQuote()  + "</p>";
     email += "<h2>Emails</h2>"          + email_info;
-    email += "<h2>Events</h2>"          + cal_info;
+    email += "<h2>Events</h2>"          + cal_string;
     email += "<h2>News</h2>"            + news_info;
     email += "<h2>Weather</h2>"         + weather_info;
     email += "<h2>Daily Recipe</h2>"    + daily_recipe;
     email += "<h2>Word of the Day</h2>" + daily_word;
     email += "<h2>Daily Quote</h2>"     + daily_quote;
-    return email;
+    return [email, cal_info[1], cal_info[2]];
 }
 
 function sendMail() {
     /*
     Creates and sends a daily email message
     */
-    var me      = Session.getActiveUser().getEmail();
-    var pic_url = "https://unsplash.it/500/300/?random";
-    var image   = UrlFetchApp.fetch(pic_url).getBlob().setName("daily_image");
+    var me       = Session.getActiveUser().getEmail();
+    var pic_url  = "https://unsplash.it/500/300/?random";
+    var image    = UrlFetchApp.fetch(pic_url).getBlob().setName("daily_image");
+    var msg_body = createMessageBody()
+    if (msg_body[1]) {
+      var attach = [image, msg_body[2].setName("daily_places")]
+    } else {
+      var attach = [image]
+    }
     MailApp.sendEmail({
         to: me,
         subject: "Your Daily Email Update",
-        htmlBody: createMessageBody(),
-        attachments: [image],
+        htmlBody: msg_body[0],
+        attachments: attach,
     });
 }

@@ -50,6 +50,56 @@ function describeEvent(evt){
     return result + "</li>";
 }
 
+function getRoute(locations){
+    /*
+    Given a list of locations as [lat, lng], returns a route one would take to
+    visit each location, in order, on foot
+    */
+    var df = Maps.newDirectionFinder()
+        .setOrigin(locations[0][0], locations[0][1])
+        .setDestination(locations[locations.length - 1][0],
+                        locations[locations.length - 1][1])
+        .setMode(Maps.DirectionFinder.Mode.WALKING);
+    for (var i = 1; i < locations.length - 1; i++) {
+        df.addWaypoint(locations[i][0], locations[i][1])
+    }
+    var directions = df.getDirections();
+    Logger.log(directions);
+    return directions.routes[0];
+}
+
+function getMapImg(locations){
+    /*
+    Given list of locations as [lat, lng], returns image of map containing the
+    route one would take to visit each location, in order, on foot
+    */
+    // Set up marker styles.
+    var markerSize = Maps.StaticMap.MarkerSize.MID;
+    var markerColor = Maps.StaticMap.Color.GREEN
+    var markerLetterCode = 'A'.charCodeAt();
+
+    // Add markers to the map.
+    var route = getRoute(locations)
+    var map = Maps.newStaticMap();
+    for (var i = 0; i < route.legs.length; i++) {
+        var leg = route.legs[i];
+        if (i == 0) { // Add marker for start location of first leg only.
+            map.setMarkerStyle(markerSize, markerColor,
+                               String.fromCharCode(markerLetterCode));
+            map.addMarker(leg.start_location.lat, leg.start_location.lng);
+            markerLetterCode++;
+        }
+        map.setMarkerStyle(markerSize, markerColor,
+                           String.fromCharCode(markerLetterCode));
+        map.addMarker(leg.end_location.lat, leg.end_location.lng);
+        markerLetterCode++;
+    }
+
+    // Add a path for the entire route.
+    map.addPath(route.overview_polyline.points);
+    return Utilities.newBlob(map.getMapImage(), 'image/png')
+}
+
 function getCalInfo() {
     /*
     Returns info about the user's calendar events for the day, as HTML string
@@ -59,24 +109,27 @@ function getCalInfo() {
     var events = CalendarApp.getDefaultCalendar().getEventsForDay(today);
     var intro = "You have " +events.length+ " event(s) scheduled for today.\n";
     var events_list = "<ol>";
-    var map = Maps.newStaticMap();
-    var locations_exist = false;
+    var locations = []
+
     for (var i = 0; i < events.length; i++) {
         var location = events[i].getLocation();
         try {
-            // For now, in square created by Brunswick, ME and Pescadero, CA
+            // For now, in rectangle created by Brunswick, ME and Pescadero, CA
             var response = Maps.newGeocoder()
                 .setBounds(37.2367582, -122.41544570000002, 43.9140, -69.9670)
                 .geocode(location);
-            map.addMarker(response.results[0].geometry.location.lat,
-                          response.results[0].geometry.location.lng);
-            locations_exist = true;
+            locations.push([response.results[0].geometry.location.lat,
+                            response.results[0].geometry.location.lng]);
         } catch(err) {}
         events_list += describeEvent(events[i]);
     }
     events_list += "</ol>";
-    var map_image = Utilities.newBlob(map.getMapImage(), 'image/png');
-    return [intro + events_list, locations_exist, map_image];
+
+    if (locations.length == 0) {
+        return [intro + events_list, null];
+    } else {
+        return [intro + events_list, getMapImg(locations)];
+    }
 }
 
 function getNewsInfo() {
@@ -188,7 +241,7 @@ function createMessageBody(){
     email += "<h2>Daily Recipe</h2>"    + daily_recipe;
     email += "<h2>Word of the Day</h2>" + daily_word;
     email += "<h2>Daily Quote</h2>"     + daily_quote;
-    return [email, cal_info[1], cal_info[2]];
+    return [email, cal_info[1]];
 }
 
 function sendMail() {
@@ -199,8 +252,8 @@ function sendMail() {
     var pic_url  = "https://unsplash.it/500/300/?random";
     var image    = UrlFetchApp.fetch(pic_url).getBlob().setName("daily_image");
     var msg_body = createMessageBody()
-    if (msg_body[1]) {
-      var attach = [image, msg_body[2].setName("daily_places")]
+    if (msg_body[1] != null) {
+      var attach = [image, msg_body[1].setName("daily_places")]
     } else {
       var attach = [image]
     }

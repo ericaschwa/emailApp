@@ -250,12 +250,21 @@ function sendMail() {
     */
     var me       = Session.getActiveUser().getEmail();
     var pic_url  = "https://unsplash.it/500/300/?random";
-    var image    = UrlFetchApp.fetch(pic_url).getBlob().setName("daily_image");
-    var msg_body = createMessageBody()
-    if (msg_body[1] != null) {
-      var attach = [image, msg_body[1].setName("daily_places")]
-    } else {
-      var attach = [image]
+    try {
+        var image    = UrlFetchApp.fetch(pic_url).getBlob().setName("daily_image");
+        var msg_body = createMessageBody()
+        if (msg_body[1] != null) {
+            var attach = [image, msg_body[1].setName("daily_places")]
+        } else {
+            var attach = [image]
+        }
+    } catch (err) {
+        var msg_body = createMessageBody()
+        if (msg_body[1] != null) {
+            var attach = [msg_body[1].setName("daily_places")]
+        } else {
+            var attach = []
+        }
     }
     MailApp.sendEmail({
         to: me,

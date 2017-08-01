@@ -35,6 +35,30 @@ function getEmailInfo(){
     return intro + message_list + "</ol>";
 }
 
+function daysInMonth(month,year) {
+    /*
+    https://stackoverflow.com/questions/1184334/get-number-days-in-a-specified-month-using-javascript
+    */
+    //Month is 1 based
+    return new Date(year, month, 0).getDate();
+}
+
+function makeRabbits(today){
+    /*
+    If today's date is the first of the month, returns an appropriate message
+    */
+    var intro = "";
+    if (today.getDate() == 1) {
+        intro += "<h1>";
+        var num_days = daysInMonth(today.getFullYear(), today.getMonth()+1);
+        for (var i = 0; i < num_days; i++) {
+            intro += "RABBIT\n";
+        }
+        intro += "</h1>";
+    }
+    return intro
+}
+
 function describeEvent(evt){
     /*
     Given an event, returns HTML string describing it
@@ -106,15 +130,15 @@ function getCalInfo() {
     Also returns whether any places have been found, and a map showing them
     */
     var today  = new Date();
+    var intro  = makeRabbits(today);
     var events = CalendarApp.getDefaultCalendar().getEventsForDay(today);
-    var intro = "You have " +events.length+ " event(s) scheduled for today.\n";
+    intro += "You have " +events.length+ " event(s) scheduled for today.\n";
     var events_list = "<ol>";
-    var locations = []
+    var locations = [];
 
     for (var i = 0; i < events.length; i++) {
         var location = events[i].getLocation();
-        try {
-            // For now, in rectangle created by Brunswick, ME and Pescadero, CA
+        try { // For now, in rectangle of Brunswick, ME and Pescadero, CA
             var response = Maps.newGeocoder()
                 .setBounds(37.2367582, -122.41544570000002, 43.9140, -69.9670)
                 .geocode(location);

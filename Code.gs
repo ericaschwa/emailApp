@@ -188,7 +188,7 @@ function getWeatherInfo() {
     var site        = "http://api.openweathermap.org/data/2.5/weather";
     var keys        = PropertiesService.getScriptProperties();
     var weather_key = keys.getProperty('weather_api');
-    var weather_url = site + "?id=5087168&APPID=" + weather_key
+    var weather_url = site + "?id=5400075&APPID=" + weather_key
     var weather_obj = JSON.parse(UrlFetchApp.fetch(weather_url));
     var description = weather_obj['weather'][0]['description'];
 
